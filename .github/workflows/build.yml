@@ -1,0 +1,55 @@
+
+name: build Dre Kernel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq wget
+
+      - name: Get latest build date and version
+        id: build
+        run: |
+          buildinfo=$(curl -fsSL "https://download.lineageos.org/api/v2/devices/dre/builds")
+          date=$(jq -er '.[0].date | gsub("-"; "")' <<< "$buildinfo")
+          version=$(jq -er '.[0].version' <<< "$buildinfo")
+          echo "date=$date" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: https://github.com/LineageOS/android_kernel_oneplus_sm4350
+          ref: lineage-${{ steps.build.outputs.version }}
+          path: kernel
+
+      - name: Download boot.img
+        run: |
+          url="https://mirrorbits.lineageos.org/full/dre/${{ steps.build.outputs.date }}/boot.img"
+          wget "$url" -O boot.img
+
+      - name: Extract kernel config
+        id: config
+        run: |
+          mkdir kernel/build
+          chmod +x kernel/scripts/extract-ikconfig
+          kernel/scripts/extract-ikconfig boot.img > kernel/build.config
+
+      - name: Detect LLVM version and Download
+        id: llvm
+        run: |
+          llvm_version=${grep -oE 'based on r[0-9]+' config | head -n1 | sed 's/based on //'}
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-$llvm_version.tar.gz -O clang.tar.gz
+          tar -xzf clang.tar.gz 
+          ls -ls
