@@ -44,12 +44,12 @@ jobs:
         run: |
           mkdir kernel/build
           chmod +x kernel/scripts/extract-ikconfig
-          kernel/scripts/extract-ikconfig boot.img > kernel/build.config
+          kernel/scripts/extract-ikconfig boot.img > kernel/build/.config
 
       - name: Detect LLVM version and Download
         id: llvm
         run: |
-          llvm_version=$(grep -oE 'based on r[0-9]+' config | head -n1 | sed 's/based on //')
+          llvm_version=$(grep -oE 'based on r[0-9]+' kernel/build/.config | head -n1 | sed 's/based on //')
           wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/mirror-goog-main-llvm-toolchain-source/clang-$llvm_version.tar.gz -O clang.tar.gz
           tar -xzf clang.tar.gz 
           ls -ls
